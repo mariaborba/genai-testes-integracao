@@ -1,0 +1,6 @@
+FAILED execucoes/p1v2a/test_p1v2a.py::test_cliente_encerrar_inexistente_nao_lanca_erro
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_reinicia_apos_terminated_dentro_do_rollout
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_reinicia_apos_truncated_dentro_do_rollout
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_ultimo_passo_truncado_se_nao_terminou
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_ultimo_passo_terminated_se_terminou_naturalmente
+FAILED execucoes/p1v2a/test_p1v2a.py::test_fluxo_completo_multiplos_episodios_e_reiniciacao

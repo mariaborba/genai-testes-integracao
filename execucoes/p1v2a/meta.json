@@ -1,0 +1,10 @@
+{
+ "prompt": "prompts/P1-contrato-v2.md",
+ "anterior": null,
+ "modelos": [
+  "claude-haiku-4-5-20251001"
+ ],
+ "tokens_entrada": 4599,
+ "tokens_saida": 23239,
+ "custo_usd": 0.130566
+}

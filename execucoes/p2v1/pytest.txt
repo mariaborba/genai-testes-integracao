@@ -1,0 +1,30 @@
+......................F...................                               [100%]
+=================================== FAILURES ===================================
+______ test_criar_episodio_campo_observacao_tipo_bool_lanca_erro_contrato ______
+
+    def test_criar_episodio_campo_observacao_tipo_bool_lanca_erro_contrato():
+        """Campo 'observacao' com tipo bool ao criar lança ErroContrato."""
+        def handler(request):
+            return httpx.Response(201, json={"id": "abc", "observacao": True, "passos": 0, "encerrado": False})
+        http = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://a")
+        cliente = ClienteAmbiente(http, 5, 10)
+    
+        with pytest.raises(ErroContrato) as exc:
+            cliente.criar_episodio()
+>       assert "observacao" in str(exc.value) and "tipo inválido" in str(exc.value)
+E       assert ('observacao' in "campo 'observacao' deveria ser numérico, recebido bool" and 'tipo inválido' in "campo 'observacao' deveria ser numérico, recebido bool")
+E        +  where "campo 'observacao' deveria ser numérico, recebido bool" = str(ErroContrato("campo 'observacao' deveria ser numérico, recebido bool"))
+E        +    where ErroContrato("campo 'observacao' deveria ser numérico, recebido bool") = <ExceptionInfo ErroContrato("campo 'observacao' deveria ser numérico, recebido bool") tblen=3>.value
+E        +  and   "campo 'observacao' deveria ser numérico, recebido bool" = str(ErroContrato("campo 'observacao' deveria ser numérico, recebido bool"))
+E        +    where ErroContrato("campo 'observacao' deveria ser numérico, recebido bool") = <ExceptionInfo ErroContrato("campo 'observacao' deveria ser numérico, recebido bool") tblen=3>.value
+
+execucoes/p2v1/test_p2v1.py:314: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED execucoes/p2v1/test_p2v1.py::test_criar_episodio_campo_observacao_tipo_bool_lanca_erro_contrato
+1 failed, 41 passed, 1 warning in 0.44s

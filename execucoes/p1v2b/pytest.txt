@@ -1,0 +1,307 @@
+...................................F...FFF..FF...FFF...F                 [100%]
+=================================== FAILURES ===================================
+___ TestClienteAmbiente.test_cliente_resposta_invalida_levanta_erro_contrato ___
+
+self = <test_p1v2b.TestClienteAmbiente object at 0x7ce39e2a3020>
+app_client = <starlette.testclient.TestClient object at 0x7ce39cd4a7b0>
+
+    def test_cliente_resposta_invalida_levanta_erro_contrato(self, app_client):
+        """ClienteAmbiente levanta ErroContrato se resposta viola contrato."""
+    
+        def mock_handler(request):
+            if "passos" in str(request.url):
+                # Resposta sem campos obrigatórios
+                return httpx.Response(200, json={"observacao": 1})
+            return httpx.Response(200, json={"id": "123", "observacao": 0, "passos": 0, "encerrado": False})
+    
+        http_mock = httpx.Client(
+            transport=httpx.MockTransport(mock_handler), base_url="http://teste"
+        )
+        cliente = ClienteAmbiente(http_mock, comprimento=5, max_passos=10)
+>       cliente.criar_episodio()
+
+execucoes/p1v2b/test_p1v2b.py:440: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x7ce39df25e10>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 5, 'max_passos': 10}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+            raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+        if resposta.status_code != esperado:
+>           raise ErroContrato(f"{metodo} {caminho}: esperado HTTP {esperado}, recebido {resposta.status_code}")
+E           coletor.rollout.ErroContrato: POST /episodios: esperado HTTP 201, recebido 200
+
+coletor/rollout.py:97: ErroContrato
+____ TestColetorRollout.test_coletor_ultimo_passo_truncated_se_nao_terminou ____
+
+self = <test_p1v2b.TestColetorRollout object at 0x7ce39e2de2c0>
+app_client = <starlette.testclient.TestClient object at 0x7ce39dfccf30>
+
+    def test_coletor_ultimo_passo_truncated_se_nao_terminou(self, app_client):
+        """Último passo marcado como truncated se episódio não terminou."""
+        cliente = ClienteAmbiente(app_client, comprimento=20, max_passos=100)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Último passo não terminou naturalmente, deve estar truncado pelo coletor
+>       assert rollout.truncated[-1] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:535: AssertionError
+___________ TestColetorRollout.test_coletor_reinicia_apos_terminate ____________
+
+self = <test_p1v2b.TestColetorRollout object at 0x7ce39dfb1c70>
+app_client = <starlette.testclient.TestClient object at 0x7ce39df1c910>
+
+    def test_coletor_reinicia_apos_terminate(self, app_client):
+        """Episódio termina no meio do rollout, coletor reinicia.
+    
+        Episódio termina no passo 2 (passos 0,1 normais, passo 2 no objetivo).
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=3, max_passos=50)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Passo 0: 0->1, passo 1: 1->2, passo 2: 2->3 (termina)
+>       assert rollout.terminated[2] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:554: AssertionError
+____________ TestColetorRollout.test_coletor_reinicia_apos_truncate ____________
+
+self = <test_p1v2b.TestColetorRollout object at 0x7ce39e2a3130>
+app_client = <starlette.testclient.TestClient object at 0x7ce39df1e350>
+
+    def test_coletor_reinicia_apos_truncate(self, app_client):
+        """Episódio trunca no meio do rollout, coletor reinicia.
+    
+        Episódio trunca no passo 2 (max_passos=3, passos=0,1,2).
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=20, max_passos=3)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Trunca no passo 2
+>       assert rollout.truncated[2] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:576: AssertionError
+_ TestCenariosComplexosRollout.test_terminal_e_truncado_simultaneos_no_rollout _
+
+self = <test_p1v2b.TestCenariosComplexosRollout object at 0x7ce39e247ed0>
+app_client = <starlette.testclient.TestClient object at 0x7ce39cd73d90>
+
+    def test_terminal_e_truncado_simultaneos_no_rollout(self, app_client):
+        """Episódio termina E trunca no mesmo passo durante rollout.
+    
+        Termina no passo 1 (max_passos=2, comprimento=2).
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=2, max_passos=2)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Passo 1: termina e trunca simultaneamente
+>       assert rollout.terminated[1] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:655: AssertionError
+_____ TestCenariosComplexosRollout.test_multiplos_episodios_em_um_rollout ______
+
+self = <test_p1v2b.TestCenariosComplexosRollout object at 0x7ce39dfbc2d0>
+app_client = <starlette.testclient.TestClient object at 0x7ce39dec9ef0>
+
+    def test_multiplos_episodios_em_um_rollout(self, app_client):
+        """Coletor coleta de múltiplos episódios diferentes."""
+        cliente = ClienteAmbiente(app_client, comprimento=2, max_passos=50)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=20,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Primeiro episódio termina no passo 2
+>       assert rollout.terminated[2] is True
+E       assert np.False_ is True
+
+execucoes/p1v2b/test_p1v2b.py:674: AssertionError
+_________ TestFronteirasEpisodio.test_episodio_termina_primeiro_passo __________
+
+self = <test_p1v2b.TestFronteirasEpisodio object at 0x7ce39dfbc690>
+app_client = <starlette.testclient.TestClient object at 0x7ce39dfcfd90>
+
+    def test_episodio_termina_primeiro_passo(self, app_client):
+        """Episódio termina no primeiro passo do rollout.
+    
+        comprimento=1 não é válido (mínimo 2), então usamos comprimento=2.
+        Primeiro passo: 0->1, segundo passo: 1->2 (objetivo).
+        Portanto, termina no passo 1 (segundo passo).
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=2, max_passos=100)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+>       assert rollout.terminated[1] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:791: AssertionError
+________ TestFronteirasEpisodio.test_episodio_max_passos_primeiro_passo ________
+
+self = <test_p1v2b.TestFronteirasEpisodio object at 0x7ce39dfbc7d0>
+app_client = <starlette.testclient.TestClient object at 0x7ce39def9c50>
+
+    def test_episodio_max_passos_primeiro_passo(self, app_client):
+        """Episódio trunca no primeiro passo do rollout.
+    
+        max_passos=1 significa que o primeiro passo já é o máximo.
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=20, max_passos=1)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+>       assert rollout.truncated[0] is True
+E       assert np.True_ is True
+
+execucoes/p1v2b/test_p1v2b.py:810: AssertionError
+___________ TestFronteirasEpisodio.test_observacoes_comecam_em_zero ____________
+
+self = <test_p1v2b.TestFronteirasEpisodio object at 0x7ce39e2de650>
+app_client = <starlette.testclient.TestClient object at 0x7ce39dfccad0>
+
+    def test_observacoes_comecam_em_zero(self, app_client):
+        """Cada novo episódio começa com observacao=0."""
+        cliente = ClienteAmbiente(app_client, comprimento=2, max_passos=100)
+    
+        rollout = coletar_rollout(
+            cliente=cliente,
+            politica=lambda obs: 1,
+            valor=lambda obs: 0.0,
+            n_passos=20,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+    
+        # Episódios começam em passos 0, 3, 6, 9, 12, 15, 18
+        # (cada episódio com comprimento=2 dura 3 passos: 0->1->2, termina)
+        for i in [0, 3, 6, 9, 12, 15, 18]:
+            if i < len(rollout.observacoes):
+>               assert rollout.observacoes[i] == 0
+E               assert np.int64(1) == 0
+
+execucoes/p1v2b/test_p1v2b.py:830: AssertionError
+___________________ TestAcoes.test_movimentos_conforme_acoes ___________________
+
+self = <test_p1v2b.TestAcoes object at 0x7ce39dfbca50>
+app_client = <starlette.testclient.TestClient object at 0x7ce39cd703d0>
+
+    def test_movimentos_conforme_acoes(self, app_client):
+        """Observações mudam conforme as ações (direita=+1, esquerda=-1)."""
+        cliente = ClienteAmbiente(app_client, comprimento=20, max_passos=100)
+    
+        acoes_planejadas = [1, 1, 0, 1, 0]
+    
+        def politica(obs):
+            return acoes_planejadas[len(rollout.acoes)]
+    
+>       rollout = coletar_rollout(
+            cliente=cliente,
+            politica=politica,
+            valor=lambda obs: 0.0,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+
+execucoes/p1v2b/test_p1v2b.py:908: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:150: in coletar_rollout
+    acao = politica(observacao)
+           ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obs = 0
+
+    def politica(obs):
+>       return acoes_planejadas[len(rollout.acoes)]
+                                    ^^^^^^^
+E       NameError: cannot access free variable 'rollout' where it is not associated with a value in enclosing scope
+
+execucoes/p1v2b/test_p1v2b.py:906: NameError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED execucoes/p1v2b/test_p1v2b.py::TestClienteAmbiente::test_cliente_resposta_invalida_levanta_erro_contrato
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_ultimo_passo_truncated_se_nao_terminou
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_reinicia_apos_terminate
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_reinicia_apos_truncate
+FAILED execucoes/p1v2b/test_p1v2b.py::TestCenariosComplexosRollout::test_terminal_e_truncado_simultaneos_no_rollout
+FAILED execucoes/p1v2b/test_p1v2b.py::TestCenariosComplexosRollout::test_multiplos_episodios_em_um_rollout
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_episodio_termina_primeiro_passo
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_episodio_max_passos_primeiro_passo
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_observacoes_comecam_em_zero
+FAILED execucoes/p1v2b/test_p1v2b.py::TestAcoes::test_movimentos_conforme_acoes
+10 failed, 46 passed, 1 warning in 1.16s

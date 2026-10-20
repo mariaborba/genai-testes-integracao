@@ -1,0 +1,213 @@
+.................................F.....FFFF..........F...                [100%]
+=================================== FAILURES ===================================
+_______________ test_cliente_encerrar_inexistente_nao_lanca_erro _______________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e7e0d710>
+
+    def test_cliente_encerrar_inexistente_nao_lanca_erro(cliente_http):
+        """ClienteAmbiente.encerrar() de id inexistente não lança erro."""
+        cliente = ClienteAmbiente(cliente_http, comprimento=5, max_passos=20)
+    
+        # Não deve lançar
+>       cliente.encerrar("id_inexistente_xyz")
+
+execucoes/p1v2a/test_p1v2a.py:478: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:82: in encerrar
+    self._requisitar("DELETE", f"/episodios/{episodio_id}", 204)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x7639e7e1dae0>
+metodo = 'DELETE', caminho = '/episodios/id_inexistente_xyz', esperado = 204
+kwargs = {}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: DELETE /episodios/id_inexistente_xyz: HTTP 404: {"detail":"episódio 'id_inexistente_xyz' não existe"}
+
+coletor/rollout.py:93: ErroAmbiente
+___________ test_coletor_reinicia_apos_terminated_dentro_do_rollout ____________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e6ca02f0>
+
+    def test_coletor_reinicia_apos_terminated_dentro_do_rollout(cliente_http):
+        """Termination no meio do rollout: episódio é reiniciado. Passo final termina em passo 2."""
+        politica = lambda obs: 1
+        valor = lambda obs: 0.0
+    
+        cliente = ClienteAmbiente(cliente_http, comprimento=3, max_passos=100)
+    
+        # Passo 0: 0->1
+        # Passo 1: 1->2
+        # Passo 2: 2->3, terminated=True (fim episódio 1)
+        # Passo 3: novo episódio, 0->1
+        # Passo 4: 1->2, truncado pelo rollout
+        rollout = coletar_rollout(
+            cliente,
+            politica=politica,
+            valor=valor,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95
+        )
+    
+>       assert rollout.terminated[2] is True
+E       assert np.True_ is True
+
+execucoes/p1v2a/test_p1v2a.py:632: AssertionError
+____________ test_coletor_reinicia_apos_truncated_dentro_do_rollout ____________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e6c475b0>
+
+    def test_coletor_reinicia_apos_truncated_dentro_do_rollout(cliente_http):
+        """Truncation no meio do rollout: episódio é reiniciado. Passo final trunca em passo 2."""
+        politica = lambda obs: 1
+        valor = lambda obs: 0.0
+    
+        cliente = ClienteAmbiente(cliente_http, comprimento=20, max_passos=3)
+    
+        # Passo 0: 0->1
+        # Passo 1: 1->2
+        # Passo 2: 2->3, truncated=True (fim episódio 1)
+        # Passo 3: novo episódio, 0->1
+        # Passo 4: 1->2, truncado pelo rollout
+        rollout = coletar_rollout(
+            cliente,
+            politica=politica,
+            valor=valor,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95
+        )
+    
+>       assert rollout.truncated[2] is True
+E       assert np.True_ is True
+
+execucoes/p1v2a/test_p1v2a.py:659: AssertionError
+______________ test_coletor_ultimo_passo_truncado_se_nao_terminou ______________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e6ca0750>
+
+    def test_coletor_ultimo_passo_truncado_se_nao_terminou(cliente_http):
+        """Último passo do rollout é marcado truncated=true se não terminou."""
+        politica = lambda obs: 1
+        valor = lambda obs: 0.0
+    
+        cliente = ClienteAmbiente(cliente_http, comprimento=100, max_passos=500)
+    
+>       rollout = coletar_rollout(
+            cliente,
+            politica=politica,
+            valor=valor,
+            n_passos=3,
+            gamma=0.99,
+            gae_lambda=0.95
+        )
+
+execucoes/p1v2a/test_p1v2a.py:671: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:148: in coletar_rollout
+    episodio_id, observacao = cliente.criar_episodio()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x7639e6c9b380>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 500}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+________ test_coletor_ultimo_passo_terminated_se_terminou_naturalmente _________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e7df3150>
+
+    def test_coletor_ultimo_passo_terminated_se_terminou_naturalmente(cliente_http):
+        """Se episódio termina exatamente no último passo, terminated=true."""
+        politica = lambda obs: 1
+        valor = lambda obs: 0.0
+    
+        cliente = ClienteAmbiente(cliente_http, comprimento=2, max_passos=100)
+    
+        # Passo 0: 0->1
+        # Passo 1: 1->2, terminated=True (exatamente no fim)
+        rollout = coletar_rollout(
+            cliente,
+            politica=politica,
+            valor=valor,
+            n_passos=2,
+            gamma=0.99,
+            gae_lambda=0.95
+        )
+    
+>       assert rollout.terminated[1] is True
+E       assert np.True_ is True
+
+execucoes/p1v2a/test_p1v2a.py:703: AssertionError
+____________ test_fluxo_completo_multiplos_episodios_e_reiniciacao _____________
+
+cliente_http = <starlette.testclient.TestClient object at 0x7639e7dc1d30>
+
+    def test_fluxo_completo_multiplos_episodios_e_reiniciacao(cliente_http):
+        """Fluxo com múltiplos episódios dentro de um rollout."""
+        # Faz 6 passos, episódio termina em 2
+        # Esperado: 3 episódios iniciados, 2 deles terminam dentro do rollout
+        politica = lambda obs: 1
+        valor = lambda obs: 0.0
+    
+        cliente = ClienteAmbiente(cliente_http, comprimento=2, max_passos=100)
+    
+        # Episódio 1: passos 0-1 (termina em passo 1)
+        # Episódio 2: passos 2-3 (termina em passo 3)
+        # Episódio 3: passos 4-5 (truncado em passo 5)
+        rollout = coletar_rollout(
+            cliente,
+            politica=politica,
+            valor=valor,
+            n_passos=6,
+            gamma=0.99,
+            gae_lambda=0.95
+        )
+    
+>       assert rollout.terminated[1] is True
+E       assert np.True_ is True
+
+execucoes/p1v2a/test_p1v2a.py:954: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED execucoes/p1v2a/test_p1v2a.py::test_cliente_encerrar_inexistente_nao_lanca_erro
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_reinicia_apos_terminated_dentro_do_rollout
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_reinicia_apos_truncated_dentro_do_rollout
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_ultimo_passo_truncado_se_nao_terminou
+FAILED execucoes/p1v2a/test_p1v2a.py::test_coletor_ultimo_passo_terminated_se_terminou_naturalmente
+FAILED execucoes/p1v2a/test_p1v2a.py::test_fluxo_completo_multiplos_episodios_e_reiniciacao
+6 failed, 51 passed, 1 warning in 0.91s

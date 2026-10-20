@@ -1,0 +1,10 @@
+FAILED execucoes/p1v2b/test_p1v2b.py::TestClienteAmbiente::test_cliente_resposta_invalida_levanta_erro_contrato
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_ultimo_passo_truncated_se_nao_terminou
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_reinicia_apos_terminate
+FAILED execucoes/p1v2b/test_p1v2b.py::TestColetorRollout::test_coletor_reinicia_apos_truncate
+FAILED execucoes/p1v2b/test_p1v2b.py::TestCenariosComplexosRollout::test_terminal_e_truncado_simultaneos_no_rollout
+FAILED execucoes/p1v2b/test_p1v2b.py::TestCenariosComplexosRollout::test_multiplos_episodios_em_um_rollout
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_episodio_termina_primeiro_passo
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_episodio_max_passos_primeiro_passo
+FAILED execucoes/p1v2b/test_p1v2b.py::TestFronteirasEpisodio::test_observacoes_comecam_em_zero
+FAILED execucoes/p1v2b/test_p1v2b.py::TestAcoes::test_movimentos_conforme_acoes

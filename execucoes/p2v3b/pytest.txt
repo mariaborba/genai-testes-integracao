@@ -1,0 +1,36 @@
+........................F...........                                     [100%]
+=================================== FAILURES ===================================
+_______________________ test_passo_recompensa_como_float _______________________
+
+    def test_passo_recompensa_como_float():
+        """Recompensa pode ser float (aceito pelas validações)."""
+        cliente = ClienteAmbiente(criar_app(), comprimento=5, max_passos=10)
+>       episodio_id, obs = cliente.criar_episodio()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^
+
+execucoes/p2v3b/test_p2v3b.py:316: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x798654dde040>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 5, 'max_passos': 10}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+>           resposta = self._http.request(metodo, caminho, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'FastAPI' object has no attribute 'request'
+
+coletor/rollout.py:86: AttributeError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED execucoes/p2v3b/test_p2v3b.py::test_passo_recompensa_como_float - Attr...
+1 failed, 35 passed, 1 warning in 0.47s

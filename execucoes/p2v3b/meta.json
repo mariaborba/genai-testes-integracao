@@ -1,0 +1,10 @@
+{
+ "prompt": "prompts/P2-falhas-v3.md",
+ "anterior": null,
+ "modelos": [
+  "claude-haiku-4-5-20251001"
+ ],
+ "tokens_entrada": 5426,
+ "tokens_saida": 12208,
+ "custo_usd": 0.077889
+}

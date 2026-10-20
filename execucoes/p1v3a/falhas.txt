@@ -1,0 +1,3 @@
+FAILED execucoes/p1v3a/test_p1v3a.py::test_coletor_rollout_ultimo_truncated
+FAILED execucoes/p1v3a/test_p1v3a.py::test_coletor_episodio_acaba_meio_do_rollout_passo_1
+FAILED execucoes/p1v3a/test_p1v3a.py::test_coletor_episodio_trunca_meio_do_rollout_passo_2

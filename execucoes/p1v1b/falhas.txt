@@ -1,0 +1,5 @@
+FAILED execucoes/p1v1b/test_p1v1b.py::test_dar_passo_episodio_encerrado_truncated
+FAILED execucoes/p1v1b/test_p1v1b.py::test_coletar_rollout_ultimo_passo_truncado
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_recompensa_zero_longe_do_objetivo
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_truncated_verdadeiro_ao_max_passos
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_recompensas_nao_negativas - ...

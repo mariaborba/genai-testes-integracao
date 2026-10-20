@@ -1,0 +1,58 @@
+......................F...                                               [100%]
+=================================== FAILURES ===================================
+__________________ test_terminated_next_values_usa_obs_final ___________________
+
+app_client = <starlette.testclient.TestClient object at 0x703cd33519d0>
+
+    def test_terminated_next_values_usa_obs_final(app_client):
+        """Quando terminated=True, next_values[t] usa obs final do episódio, não do novo.
+    
+        Cenário: comprimento=2, n_passos=2, política sempre ação 1 (direita).
+        - Passo 0: obs 0 -> 1, recompensa -1, terminated=False
+        - Passo 1: obs 1 -> 2, recompensa +10, terminated=True
+        next_values[1] = valor(2), não valor(0) do novo episódio.
+        """
+        cliente = ClienteAmbiente(app_client, comprimento=2, max_passos=10)
+    
+        valor = lambda obs: float(obs)
+        politica = lambda obs: 1
+    
+        rollout = coletar_rollout(cliente, politica, valor, n_passos=2, gamma=0.99, gae_lambda=0.95)
+    
+        assert rollout.observacoes.tolist() == [0, 1]
+        assert rollout.acoes.tolist() == [1, 1]
+        assert rollout.recompensas.tolist() == [-1.0, 10.0]
+        assert rollout.values.tolist() == [0.0, 1.0]
+        assert rollout.next_values.tolist() == [1.0, 2.0]
+        np.testing.assert_array_equal(rollout.terminated, [False, True])
+>       np.testing.assert_array_equal(rollout.truncated, [False, True])
+E       AssertionError: 
+E       Arrays are not equal
+E       
+E       Mismatched elements: 1 / 2 (50%)
+E       Mismatch at index:
+E        [1]: False (ACTUAL), True (DESIRED)
+E        ACTUAL: array([False, False])
+E        DESIRED: array([False,  True])
+
+execucoes/p2v3a/test_p2v3a.py:329: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.13-final-0 _______________
+
+Name                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------
+ambiente/__init__.py       0      0      0      0   100%
+ambiente/app.py           65      0      4      0   100%
+coletor/__init__.py        0      0      0      0   100%
+coletor/rollout.py        95      5     22      3    93%   97, 102-103, 105, 145
+------------------------------------------------------------------
+TOTAL                    160      5     26      3    96%
+=========================== short test summary info ============================
+FAILED execucoes/p2v3a/test_p2v3a.py::test_terminated_next_values_usa_obs_final
+1 failed, 25 passed, 1 warning in 0.57s

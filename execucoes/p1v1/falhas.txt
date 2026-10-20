@@ -1,0 +1,8 @@
+FAILED execucoes/p1v1/test_p1v1.py::TestDarPasso::test_dar_passo_episodio_truncated_409
+FAILED execucoes/p1v1/test_p1v1.py::TestColetorRollout::test_coletar_rollout_ultimo_passo_truncado
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_criar_episodio
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_passo
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_encerrar
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_criar_episodio
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_passo
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_encerrar

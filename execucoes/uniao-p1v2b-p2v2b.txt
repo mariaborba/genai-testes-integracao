@@ -1,0 +1,20 @@
+sem mutação: 87 passed, 10 deselected, 1 warning in 0.86s
+PEGOU   S1 criação devolve 200
+PEGOU   S2 passo após encerrar
+PEGOU   S3 id inexistente vira 400
+PEGOU   S4 nunca trunca
+PEGOU   S5 trunca um passo tarde
+PEGOU   S6 objetivo sem +10
+PEGOU   S7 aceita acao 2
+PEGOU   S8 DELETE não remove
+PEGOU   S9 truncado esconde terminado
+ESCAPOU C1 next_value do episódio novo
+PEGOU   C2 truncado vira terminado
+PEGOU   C3 fim do rollout não trunca
+PEGOU   C4 4xx passa em silêncio
+ESCAPOU C5 aceita bool em texto
+PEGOU   C6 falha de rede escapa crua
+ESCAPOU C7 não remove episódio acabado
+PEGOU   C8 não reinicia episódio
+PEGOU   C9 ignora status de sucesso
+escore: 15/18

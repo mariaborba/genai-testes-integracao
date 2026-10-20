@@ -1,0 +1,61 @@
+# P1 v2 — Contrato da API + regras do ambiente + fluxo do coletor (caixa-preta)
+
+**Ajustes em relação à v1** (ver execucoes/p1v1): regras de negócio do ambiente acrescentadas, porque a
+OpenAPI não as descreve e os mutantes S4–S6 escaparam; instruções 6 a 9 contra os erros observados
+(exceção do httpx sem mensagem, `comprimento=100` fora do schema, oráculos só de tamanho e dtype,
+cenários que nunca cruzam o fim de um episódio).
+
+**Tipo de prompt:** baseado em especificação, no estilo da Figura 28 da Unidade III. A LLM recebe só a
+especificação OpenAPI do serviço e a interface pública do coletor (assinaturas e docstrings, sem os
+corpos). Papel no system; tarefa, instruções e contexto no user, como numa chamada de API.
+
+## System
+
+```text
+Você é um engenheiro de testes experiente, especializado em testes funcionais, testes de API REST e testes de integração.
+```
+
+## User
+
+```text
+Crie um conjunto de testes de integração caixa-preta em pytest para a integração entre o serviço REST do
+ambiente e o coletor de rollouts que o consome. Use a especificação OpenAPI delimitada por ##### para
+saber como o serviço se comporta e a interface pública do coletor delimitada por ***** para saber como
+o cliente usa o serviço. O conjunto deve cobrir a especificação, todas as respostas possíveis (status
+code) e o fluxo do coletor sobre o serviço real. A resposta deve conter apenas código Python.
+
+REGRAS DO AMBIENTE (não aparecem na OpenAPI):
+- O agente começa na posição 0. Ação 1 anda uma casa para a direita; ação 0, uma para a esquerda, sem
+  passar de 0 (na posição 0, a ação 0 mantém o agente em 0).
+- Cada passo vale recompensa -1.0. O passo que chega à posição `comprimento` vale +10.0 e tem
+  `terminated=true`.
+- `truncated=true` no passo em que o número de passos atinge `max_passos`. Os dois podem ser true no mesmo passo.
+- Depois de terminated ou truncated, o episódio está encerrado: novos passos devolvem 409.
+
+Siga estas instruções no código gerado:
+1. Um único arquivo pytest, Python 3.13. Use apenas pytest, httpx, numpy, a biblioteca padrão e
+   `from fastapi.testclient import TestClient`. Importe o sistema com `from ambiente.app import criar_app`
+   e `from coletor.rollout import ClienteAmbiente, ErroAmbiente, ErroContrato, Transicao, Rollout, coletar_rollout`.
+2. O serviço real roda em memória: crie uma fixture que devolve `TestClient(criar_app())` novo a cada teste.
+   O TestClient é um `httpx.Client`, então pode ser passado direto para `ClienteAmbiente(http, comprimento, max_passos)`.
+3. Sem rede, sem `time.sleep`, sem servidor externo e sem dependência entre testes.
+4. Para falhas que o serviço real não produz (HTTP 5xx, timeout, falha de conexão, corpo fora do contrato),
+   use `httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")`.
+5. Nomes de teste em português, no formato test_<o_que>_<condicao>.
+6. Exceções do httpx exigem mensagem e request: `raise httpx.ReadTimeout("tempo esgotado", request=request)`,
+   `raise httpx.ConnectError("recusada", request=request)`.
+7. Respeite os limites do schema: `comprimento` entre 2 e 20 e `max_passos` entre 1 e 500. Valores fora
+   desses limites só aparecem em testes que esperam HTTP 422.
+8. Oráculos: compare com valores literais que você calculou à mão (arrays inteiros, não só tamanho ou dtype).
+   Erros do coletor: confira o tipo da exceção e `status`, nunca o texto da mensagem.
+9. Todo teste de regra de fronteira de episódio precisa de um cenário em que o episódio realmente termina
+   ou trunca DENTRO do rollout. Escreva num comentário em qual passo isso acontece.
+
+#####
+{OPENAPI}
+#####
+
+*****
+{INTERFACE}
+*****
+```

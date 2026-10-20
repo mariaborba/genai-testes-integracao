@@ -1,0 +1,4 @@
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_next_values_observacao_final_episodio_truncado
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_ultimo_passo_marcado_truncated
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_recompensa_passo_quando_nao_terminated
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_erro_ambiente_na_passo - F...

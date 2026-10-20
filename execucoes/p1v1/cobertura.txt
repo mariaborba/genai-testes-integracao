@@ -1,0 +1,367 @@
+......................F..........F......FFFFFF.........                  [100%]
+=================================== FAILURES ===================================
+______________ TestDarPasso.test_dar_passo_episodio_truncated_409 ______________
+
+self = <test_p1v1.TestDarPasso object at 0x78f9f1da3550>
+cliente_api = <starlette.testclient.TestClient object at 0x78f9f1c22b30>
+
+    def test_dar_passo_episodio_truncated_409(self, cliente_api):
+        criar_resp = cliente_api.post("/episodios", json={"comprimento": 100, "max_passos": 2})
+>       episodio_id = criar_resp.json()["id"]
+                      ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'id'
+
+execucoes/p1v1/test_p1v1.py:152: KeyError
+________ TestColetorRollout.test_coletar_rollout_ultimo_passo_truncado _________
+
+self = <test_p1v1.TestColetorRollout object at 0x78f9f1ca7890>
+cliente_api = <starlette.testclient.TestClient object at 0x78f9f12e82f0>
+
+    def test_coletar_rollout_ultimo_passo_truncado(self, cliente_api):
+        cliente = ClienteAmbiente(cliente_api, comprimento=100, max_passos=100)
+        def politica(obs):
+            return 1
+        def valor(obs):
+            return 0.0
+>       rollout = coletar_rollout(cliente, politica, valor, 5, 0.99, 0.95)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+execucoes/p1v1/test_p1v1.py:266: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:148: in coletar_rollout
+    episodio_id, observacao = cliente.criar_episodio()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x78f9f1b93950>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 100}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+_____________ TestErroTimeout.test_cliente_timeout_criar_episodio ______________
+
+self = <test_p1v1.TestErroTimeout object at 0x78f9f1cc0190>
+
+    def test_cliente_timeout_criar_episodio(self):
+        http = httpx.Client(transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(httpx.TimeoutException())), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.criar_episodio()
+
+execucoes/p1v1/test_p1v1.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Request('POST', 'http://ambiente/episodios')>
+
+>   http = httpx.Client(transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(httpx.TimeoutException())), base_url="http://ambiente")
+                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:334: TypeError
+__________________ TestErroTimeout.test_cliente_timeout_passo __________________
+
+self = <test_p1v1.TestErroTimeout object at 0x78f9f1cc02d0>
+
+    def test_cliente_timeout_passo(self):
+        def handler(request):
+            if "/passos" not in request.url.path:
+                return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+            raise httpx.TimeoutException()
+        http = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        cliente.criar_episodio()
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.passo("ep1", 0)
+
+execucoes/p1v1/test_p1v1.py:349: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:73: in passo
+    corpo = self._requisitar("POST", f"/episodios/{episodio_id}/passos", 200, json={"acao": acao})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('POST', 'http://ambiente/episodios/ep1/passos')>
+
+    def handler(request):
+        if "/passos" not in request.url.path:
+            return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+>       raise httpx.TimeoutException()
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:344: TypeError
+________________ TestErroTimeout.test_cliente_timeout_encerrar _________________
+
+self = <test_p1v1.TestErroTimeout object at 0x78f9f1c9cfc0>
+
+    def test_cliente_timeout_encerrar(self):
+        def handler(request):
+            if request.method == "DELETE":
+                raise httpx.TimeoutException()
+            return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+        http = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        cliente.criar_episodio()
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.encerrar("ep1")
+
+execucoes/p1v1/test_p1v1.py:361: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:82: in encerrar
+    self._requisitar("DELETE", f"/episodios/{episodio_id}", 204)
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('DELETE', 'http://ambiente/episodios/ep1')>
+
+    def handler(request):
+        if request.method == "DELETE":
+>           raise httpx.TimeoutException()
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:355: TypeError
+__________ TestErroConexao.test_cliente_conexao_falha_criar_episodio ___________
+
+self = <test_p1v1.TestErroConexao object at 0x78f9f1d7bd90>
+
+    def test_cliente_conexao_falha_criar_episodio(self):
+        http = httpx.Client(transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(httpx.ConnectError())), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.criar_episodio()
+
+execucoes/p1v1/test_p1v1.py:371: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Request('POST', 'http://ambiente/episodios')>
+
+>   http = httpx.Client(transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(httpx.ConnectError())), base_url="http://ambiente")
+                                                                                      ^^^^^^^^^^^^^^^^^^^^
+E   TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:368: TypeError
+_______________ TestErroConexao.test_cliente_conexao_falha_passo _______________
+
+self = <test_p1v1.TestErroConexao object at 0x78f9f1cc0410>
+
+    def test_cliente_conexao_falha_passo(self):
+        def handler(request):
+            if "/passos" not in request.url.path:
+                return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+            raise httpx.ConnectError()
+        http = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        cliente.criar_episodio()
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.passo("ep1", 0)
+
+execucoes/p1v1/test_p1v1.py:383: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:73: in passo
+    corpo = self._requisitar("POST", f"/episodios/{episodio_id}/passos", 200, json={"acao": acao})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('POST', 'http://ambiente/episodios/ep1/passos')>
+
+    def handler(request):
+        if "/passos" not in request.url.path:
+            return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+>       raise httpx.ConnectError()
+              ^^^^^^^^^^^^^^^^^^^^
+E       TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:378: TypeError
+_____________ TestErroConexao.test_cliente_conexao_falha_encerrar ______________
+
+self = <test_p1v1.TestErroConexao object at 0x78f9f1c9d0f0>
+
+    def test_cliente_conexao_falha_encerrar(self):
+        def handler(request):
+            if request.method == "DELETE":
+                raise httpx.ConnectError()
+            return httpx.Response(201, json={"id": "ep1", "observacao": 0, "passos": 0, "encerrado": False})
+        http = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")
+        cliente = ClienteAmbiente(http, comprimento=10, max_passos=100)
+        cliente.criar_episodio()
+        with pytest.raises(ErroAmbiente) as exc_info:
+>           cliente.encerrar("ep1")
+
+execucoes/p1v1/test_p1v1.py:395: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:82: in encerrar
+    self._requisitar("DELETE", f"/episodios/{episodio_id}", 204)
+coletor/rollout.py:86: in _requisitar
+    resposta = self._http.request(metodo, caminho, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/mock.py:24: in handle_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('DELETE', 'http://ambiente/episodios/ep1')>
+
+    def handler(request):
+        if request.method == "DELETE":
+>           raise httpx.ConnectError()
+                  ^^^^^^^^^^^^^^^^^^^^
+E           TypeError: RequestError.__init__() missing 1 required positional argument: 'message'
+
+execucoes/p1v1/test_p1v1.py:389: TypeError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.13-final-0 _______________
+
+Name                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------
+ambiente/__init__.py       0      0      0      0   100%
+ambiente/app.py           65      0      4      0   100%
+coletor/__init__.py        0      0      0      0   100%
+coletor/rollout.py        95      7     22      3    91%   88, 90, 97, 102-103, 105, 115
+------------------------------------------------------------------
+TOTAL                    160      7     26      3    95%
+=========================== short test summary info ============================
+FAILED execucoes/p1v1/test_p1v1.py::TestDarPasso::test_dar_passo_episodio_truncated_409
+FAILED execucoes/p1v1/test_p1v1.py::TestColetorRollout::test_coletar_rollout_ultimo_passo_truncado
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_criar_episodio
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_passo
+FAILED execucoes/p1v1/test_p1v1.py::TestErroTimeout::test_cliente_timeout_encerrar
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_criar_episodio
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_passo
+FAILED execucoes/p1v1/test_p1v1.py::TestErroConexao::test_cliente_conexao_falha_encerrar
+8 failed, 47 passed, 1 warning in 1.67s

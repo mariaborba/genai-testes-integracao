@@ -1,0 +1,168 @@
+..................................FF.F....F..                            [100%]
+=================================== FAILURES ===================================
+_________ test_rollout_next_values_observacao_final_episodio_truncado __________
+
+app_cliente = <starlette.testclient.TestClient object at 0x70d21b423250>
+politica_direita = <function politica_direita.<locals>.<lambda> at 0x70d21a143560>
+valor_obs = <function valor_obs.<locals>.<lambda> at 0x70d21a141940>
+
+    def test_rollout_next_values_observacao_final_episodio_truncado(app_cliente, politica_direita, valor_obs):
+        """next_values[t] usa observacao final do episódio truncado, não a inicial do próximo."""
+        cliente = ClienteAmbiente(app_cliente, comprimento=100, max_passos=2)
+>       rollout = coletar_rollout(
+            cliente,
+            politica=politica_direita,
+            valor=valor_obs,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+
+execucoes/p2v1b/test_p2v1b.py:416: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:148: in coletar_rollout
+    episodio_id, observacao = cliente.criar_episodio()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x70d21b2eec30>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 2}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+_________________ test_rollout_ultimo_passo_marcado_truncated __________________
+
+app_cliente = <starlette.testclient.TestClient object at 0x70d21b2f5050>
+politica_direita = <function politica_direita.<locals>.<lambda> at 0x70d21a141440>
+
+    def test_rollout_ultimo_passo_marcado_truncated(app_cliente, politica_direita):
+        """O último passo do rollout é marcado como truncated se não foi terminated."""
+        cliente = ClienteAmbiente(app_cliente, comprimento=100, max_passos=200)
+        valor = lambda obs: 0.5
+>       rollout = coletar_rollout(
+            cliente,
+            politica=politica_direita,
+            valor=valor,
+            n_passos=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+
+execucoes/p2v1b/test_p2v1b.py:436: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:148: in coletar_rollout
+    episodio_id, observacao = cliente.criar_episodio()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x70d21b2ef650>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 200}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+_____________ test_rollout_recompensa_passo_quando_nao_terminated ______________
+
+app_cliente = <starlette.testclient.TestClient object at 0x70d21b2d8230>
+politica_direita = <function politica_direita.<locals>.<lambda> at 0x70d21a2244a0>
+
+    def test_rollout_recompensa_passo_quando_nao_terminated(app_cliente, politica_direita):
+        """Recompensa é RECOMPENSA_PASSO quando episódio não termina."""
+        cliente = ClienteAmbiente(app_cliente, comprimento=100, max_passos=200)
+        valor = lambda obs: 0.5
+>       rollout = coletar_rollout(
+            cliente,
+            politica=politica_direita,
+            valor=valor,
+            n_passos=5,
+            gamma=0.99,
+            gae_lambda=0.95,
+        )
+
+execucoes/p2v1b/test_p2v1b.py:468: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:148: in coletar_rollout
+    episodio_id, observacao = cliente.criar_episodio()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x70d21a1a28d0>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 200}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+_____________________ test_rollout_erro_ambiente_na_passo ______________________
+
+app_cliente = <starlette.testclient.TestClient object at 0x70d21b2b12b0>
+politica_direita = <function politica_direita.<locals>.<lambda> at 0x70d21a225940>
+
+    def test_rollout_erro_ambiente_na_passo(app_cliente, politica_direita):
+        """Erro de ambiente (HTTP 404 de episódio inexistente) durante coleta propaga."""
+        cliente = ClienteAmbiente(app_cliente, comprimento=10, max_passos=1)
+        valor = lambda obs: 0.5
+        # Com max_passos=1, episódio trunca após 1 passo; novo é criado
+        # Simulamos erro deletando o episódio manualmente
+>       with pytest.raises(ErroAmbiente) as exc:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ErroAmbiente
+
+execucoes/p2v1b/test_p2v1b.py:550: Failed
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_next_values_observacao_final_episodio_truncado
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_ultimo_passo_marcado_truncated
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_recompensa_passo_quando_nao_terminated
+FAILED execucoes/p2v1b/test_p2v1b.py::test_rollout_erro_ambiente_na_passo - F...
+4 failed, 41 passed, 1 warning in 0.49s

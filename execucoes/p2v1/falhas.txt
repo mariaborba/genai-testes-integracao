@@ -1,0 +1,1 @@
+FAILED execucoes/p2v1/test_p2v1.py::test_criar_episodio_campo_observacao_tipo_bool_lanca_erro_contrato

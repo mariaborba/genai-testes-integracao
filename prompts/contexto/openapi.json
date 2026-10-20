@@ -1,0 +1,334 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Ambiente corredor",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/episodios": {
+   "post": {
+    "summary": "Criar Episodio",
+    "operationId": "criar_episodio_episodios_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NovoEpisodio"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EstadoEpisodio"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/episodios/{episodio_id}": {
+   "get": {
+    "summary": "Consultar Episodio",
+    "operationId": "consultar_episodio_episodios__episodio_id__get",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EstadoEpisodio"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "summary": "Remover Episodio",
+    "operationId": "remover_episodio_episodios__episodio_id__delete",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/episodios/{episodio_id}/passos": {
+   "post": {
+    "summary": "Dar Passo",
+    "operationId": "dar_passo_episodios__episodio_id__passos_post",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Acao"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Transicao"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "409": {
+      "description": "Episódio já encerrado (terminated ou truncated)."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Acao": {
+    "properties": {
+     "acao": {
+      "type": "integer",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Acao",
+      "description": "0 = esquerda, 1 = direita."
+     }
+    },
+    "type": "object",
+    "required": [
+     "acao"
+    ],
+    "title": "Acao"
+   },
+   "EstadoEpisodio": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "observacao": {
+      "type": "integer",
+      "title": "Observacao",
+      "description": "Posição atual do agente."
+     },
+     "passos": {
+      "type": "integer",
+      "title": "Passos"
+     },
+     "encerrado": {
+      "type": "boolean",
+      "title": "Encerrado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "observacao",
+     "passos",
+     "encerrado"
+    ],
+    "title": "EstadoEpisodio"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "NovoEpisodio": {
+    "properties": {
+     "comprimento": {
+      "type": "integer",
+      "maximum": 20.0,
+      "minimum": 2.0,
+      "title": "Comprimento",
+      "description": "Posição do objetivo."
+     },
+     "max_passos": {
+      "type": "integer",
+      "maximum": 500.0,
+      "minimum": 1.0,
+      "title": "Max Passos",
+      "description": "Limite de passos antes da truncagem."
+     }
+    },
+    "type": "object",
+    "required": [
+     "comprimento",
+     "max_passos"
+    ],
+    "title": "NovoEpisodio"
+   },
+   "Transicao": {
+    "properties": {
+     "observacao": {
+      "type": "integer",
+      "title": "Observacao",
+      "description": "Posição depois do passo (observação final se o episódio acabou)."
+     },
+     "recompensa": {
+      "type": "number",
+      "title": "Recompensa"
+     },
+     "terminated": {
+      "type": "boolean",
+      "title": "Terminated",
+      "description": "Chegou ao objetivo: não há valor futuro."
+     },
+     "truncated": {
+      "type": "boolean",
+      "title": "Truncated",
+      "description": "Atingiu max_passos: o estado seguinte ainda tem valor."
+     }
+    },
+    "type": "object",
+    "required": [
+     "observacao",
+     "recompensa",
+     "terminated",
+     "truncated"
+    ],
+    "title": "Transicao"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

@@ -1,0 +1,1 @@
+Resposta sem bloco de código completo: a saída atingiu o limite do modelo e o CLI devolveu só o trecho final (começa no meio de uma função). Nenhum teste aproveitável.

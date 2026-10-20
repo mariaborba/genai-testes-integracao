@@ -1,0 +1,127 @@
+..............F...........F...................F.F........F.              [100%]
+=================================== FAILURES ===================================
+_________________ test_dar_passo_episodio_encerrado_truncated __________________
+
+cliente_http = <starlette.testclient.TestClient object at 0x758ddf617cb0>
+
+    def test_dar_passo_episodio_encerrado_truncated(cliente_http):
+        """POST /episodios/{id}/passos em episódio truncated retorna 409."""
+        post_response = cliente_http.post(
+            "/episodios",
+            json={"comprimento": 100, "max_passos": 2}
+        )
+>       episodio_id = post_response.json()["id"]
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'id'
+
+execucoes/p1v1b/test_p1v1b.py:201: KeyError
+__________________ test_coletar_rollout_ultimo_passo_truncado __________________
+
+cliente_http = <starlette.testclient.TestClient object at 0x758ddec8dfd0>
+
+    def test_coletar_rollout_ultimo_passo_truncado(cliente_http):
+        """Último passo é marcado como truncated se episódio não terminou."""
+        cliente = ClienteAmbiente(cliente_http, 20, 100)
+    
+        rollout = coletar_rollout(
+            cliente, lambda obs: 0, lambda obs: 0.0, 8, 0.99, 0.95
+        )
+    
+>       assert rollout.truncated[-1] is True
+E       assert np.True_ is True
+
+execucoes/p1v1b/test_p1v1b.py:379: AssertionError
+_________________ test_fluxo_recompensa_zero_longe_do_objetivo _________________
+
+cliente_http = <starlette.testclient.TestClient object at 0x758ddec68670>
+
+    def test_fluxo_recompensa_zero_longe_do_objetivo(cliente_http):
+        """Recompensa é 0 quando longe do objetivo."""
+        cliente = ClienteAmbiente(cliente_http, 10, 100)
+        episodio_id, _ = cliente.criar_episodio()
+    
+        transicao = cliente.passo(episodio_id, 0)
+    
+>       assert transicao.recompensa == 0.0
+E       assert -1.0 == 0.0
+E        +  where -1.0 = Transicao(observacao=0, recompensa=-1.0, terminated=False, truncated=False).recompensa
+
+execucoes/p1v1b/test_p1v1b.py:627: AssertionError
+________________ test_fluxo_truncated_verdadeiro_ao_max_passos _________________
+
+cliente_http = <starlette.testclient.TestClient object at 0x758ddecbf930>
+
+    def test_fluxo_truncated_verdadeiro_ao_max_passos(cliente_http):
+        """truncated é True ao atingir max_passos."""
+        cliente = ClienteAmbiente(cliente_http, 100, 3)
+>       episodio_id, _ = cliente.criar_episodio()
+                         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+execucoes/p1v1b/test_p1v1b.py:647: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+coletor/rollout.py:67: in criar_episodio
+    corpo = self._requisitar(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <coletor.rollout.ClienteAmbiente object at 0x758ddf5dfcb0>
+metodo = 'POST', caminho = '/episodios', esperado = 201
+kwargs = {'json': {'comprimento': 100, 'max_passos': 3}}
+
+    def _requisitar(self, metodo: str, caminho: str, esperado: int, **kwargs) -> dict | None:
+        try:
+            resposta = self._http.request(metodo, caminho, **kwargs)
+        except httpx.TimeoutException as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: tempo esgotado", status=None) from erro
+        except httpx.TransportError as erro:
+            raise ErroAmbiente(f"{metodo} {caminho}: falha de conexão ({erro})", status=None) from erro
+    
+        if resposta.status_code >= 400:
+>           raise ErroAmbiente(
+                f"{metodo} {caminho}: HTTP {resposta.status_code}: {resposta.text[:200]}", status=resposta.status_code
+            )
+E           coletor.rollout.ErroAmbiente: POST /episodios: HTTP 422: {"detail":[{"type":"less_than_equal","loc":["body","comprimento"],"msg":"Input should be less than or equal to 20","input":100,"ctx":{"le":20}}]}
+
+coletor/rollout.py:93: ErroAmbiente
+_____________________ test_fluxo_recompensas_nao_negativas _____________________
+
+cliente_http = <starlette.testclient.TestClient object at 0x758ddf58dc50>
+
+    def test_fluxo_recompensas_nao_negativas(cliente_http):
+        """Recompensas coletadas nunca são negativas."""
+        cliente = ClienteAmbiente(cliente_http, 10, 100)
+    
+        rollout = coletar_rollout(
+            cliente, lambda obs: 1, lambda obs: 0.0, 10, 0.99, 0.95
+        )
+    
+>       assert np.all(rollout.recompensas >= 0.0)
+E       assert np.False_
+E        +  where np.False_ = <function all at 0x758e09dd6070>(array([-1., -1., -1., -1., -1., -1., -1., -1., -1., 10.]) >= 0.0)
+E        +    where <function all at 0x758e09dd6070> = np.all
+E        +    and   array([-1., -1., -1., -1., -1., -1., -1., -1., -1., 10.]) = Rollout(observacoes=array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), acoes=array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), recompensas=ar...51337,  0.64166574,  1.74552445,  2.91921791,\n        4.16716418,  5.4940608 ,  6.9049025 ,  8.405     , 10.        ])).recompensas
+
+execucoes/p1v1b/test_p1v1b.py:770: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/duda/Engenharia_Software/integracao-u3/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.13-final-0 _______________
+
+Name                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------
+ambiente/__init__.py       0      0      0      0   100%
+ambiente/app.py           65      0      4      0   100%
+coletor/__init__.py        0      0      0      0   100%
+coletor/rollout.py        95      5     22      3    93%   97, 102-103, 105, 115
+------------------------------------------------------------------
+TOTAL                    160      5     26      3    96%
+=========================== short test summary info ============================
+FAILED execucoes/p1v1b/test_p1v1b.py::test_dar_passo_episodio_encerrado_truncated
+FAILED execucoes/p1v1b/test_p1v1b.py::test_coletar_rollout_ultimo_passo_truncado
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_recompensa_zero_longe_do_objetivo
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_truncated_verdadeiro_ao_max_passos
+FAILED execucoes/p1v1b/test_p1v1b.py::test_fluxo_recompensas_nao_negativas - ...
+5 failed, 54 passed, 1 warning in 1.51s

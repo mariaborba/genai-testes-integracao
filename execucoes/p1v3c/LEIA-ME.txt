@@ -1,0 +1,1 @@
+Mesmo caso de p1v3b: saída cortada no limite do modelo.

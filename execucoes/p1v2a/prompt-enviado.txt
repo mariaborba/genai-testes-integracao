@@ -1,0 +1,446 @@
+[system]
+Você é um engenheiro de testes experiente, especializado em testes funcionais, testes de API REST e testes de integração.
+
+[user]
+Crie um conjunto de testes de integração caixa-preta em pytest para a integração entre o serviço REST do
+ambiente e o coletor de rollouts que o consome. Use a especificação OpenAPI delimitada por ##### para
+saber como o serviço se comporta e a interface pública do coletor delimitada por ***** para saber como
+o cliente usa o serviço. O conjunto deve cobrir a especificação, todas as respostas possíveis (status
+code) e o fluxo do coletor sobre o serviço real. A resposta deve conter apenas código Python.
+
+REGRAS DO AMBIENTE (não aparecem na OpenAPI):
+- O agente começa na posição 0. Ação 1 anda uma casa para a direita; ação 0, uma para a esquerda, sem
+  passar de 0 (na posição 0, a ação 0 mantém o agente em 0).
+- Cada passo vale recompensa -1.0. O passo que chega à posição `comprimento` vale +10.0 e tem
+  `terminated=true`.
+- `truncated=true` no passo em que o número de passos atinge `max_passos`. Os dois podem ser true no mesmo passo.
+- Depois de terminated ou truncated, o episódio está encerrado: novos passos devolvem 409.
+
+Siga estas instruções no código gerado:
+1. Um único arquivo pytest, Python 3.13. Use apenas pytest, httpx, numpy, a biblioteca padrão e
+   `from fastapi.testclient import TestClient`. Importe o sistema com `from ambiente.app import criar_app`
+   e `from coletor.rollout import ClienteAmbiente, ErroAmbiente, ErroContrato, Transicao, Rollout, coletar_rollout`.
+2. O serviço real roda em memória: crie uma fixture que devolve `TestClient(criar_app())` novo a cada teste.
+   O TestClient é um `httpx.Client`, então pode ser passado direto para `ClienteAmbiente(http, comprimento, max_passos)`.
+3. Sem rede, sem `time.sleep`, sem servidor externo e sem dependência entre testes.
+4. Para falhas que o serviço real não produz (HTTP 5xx, timeout, falha de conexão, corpo fora do contrato),
+   use `httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ambiente")`.
+5. Nomes de teste em português, no formato test_<o_que>_<condicao>.
+6. Exceções do httpx exigem mensagem e request: `raise httpx.ReadTimeout("tempo esgotado", request=request)`,
+   `raise httpx.ConnectError("recusada", request=request)`.
+7. Respeite os limites do schema: `comprimento` entre 2 e 20 e `max_passos` entre 1 e 500. Valores fora
+   desses limites só aparecem em testes que esperam HTTP 422.
+8. Oráculos: compare com valores literais que você calculou à mão (arrays inteiros, não só tamanho ou dtype).
+   Erros do coletor: confira o tipo da exceção e `status`, nunca o texto da mensagem.
+9. Todo teste de regra de fronteira de episódio precisa de um cenário em que o episódio realmente termina
+   ou trunca DENTRO do rollout. Escreva num comentário em qual passo isso acontece.
+
+#####
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Ambiente corredor",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/episodios": {
+   "post": {
+    "summary": "Criar Episodio",
+    "operationId": "criar_episodio_episodios_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NovoEpisodio"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EstadoEpisodio"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/episodios/{episodio_id}": {
+   "get": {
+    "summary": "Consultar Episodio",
+    "operationId": "consultar_episodio_episodios__episodio_id__get",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EstadoEpisodio"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "summary": "Remover Episodio",
+    "operationId": "remover_episodio_episodios__episodio_id__delete",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/episodios/{episodio_id}/passos": {
+   "post": {
+    "summary": "Dar Passo",
+    "operationId": "dar_passo_episodios__episodio_id__passos_post",
+    "parameters": [
+     {
+      "name": "episodio_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Episodio Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Acao"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Transicao"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Episódio não existe."
+     },
+     "409": {
+      "description": "Episódio já encerrado (terminated ou truncated)."
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Acao": {
+    "properties": {
+     "acao": {
+      "type": "integer",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Acao",
+      "description": "0 = esquerda, 1 = direita."
+     }
+    },
+    "type": "object",
+    "required": [
+     "acao"
+    ],
+    "title": "Acao"
+   },
+   "EstadoEpisodio": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "observacao": {
+      "type": "integer",
+      "title": "Observacao",
+      "description": "Posição atual do agente."
+     },
+     "passos": {
+      "type": "integer",
+      "title": "Passos"
+     },
+     "encerrado": {
+      "type": "boolean",
+      "title": "Encerrado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "observacao",
+     "passos",
+     "encerrado"
+    ],
+    "title": "EstadoEpisodio"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "NovoEpisodio": {
+    "properties": {
+     "comprimento": {
+      "type": "integer",
+      "maximum": 20.0,
+      "minimum": 2.0,
+      "title": "Comprimento",
+      "description": "Posição do objetivo."
+     },
+     "max_passos": {
+      "type": "integer",
+      "maximum": 500.0,
+      "minimum": 1.0,
+      "title": "Max Passos",
+      "description": "Limite de passos antes da truncagem."
+     }
+    },
+    "type": "object",
+    "required": [
+     "comprimento",
+     "max_passos"
+    ],
+    "title": "NovoEpisodio"
+   },
+   "Transicao": {
+    "properties": {
+     "observacao": {
+      "type": "integer",
+      "title": "Observacao",
+      "description": "Posição depois do passo (observação final se o episódio acabou)."
+     },
+     "recompensa": {
+      "type": "number",
+      "title": "Recompensa"
+     },
+     "terminated": {
+      "type": "boolean",
+      "title": "Terminated",
+      "description": "Chegou ao objetivo: não há valor futuro."
+     },
+     "truncated": {
+      "type": "boolean",
+      "title": "Truncated",
+      "description": "Atingiu max_passos: o estado seguinte ainda tem valor."
+     }
+    },
+    "type": "object",
+    "required": [
+     "observacao",
+     "recompensa",
+     "terminated",
+     "truncated"
+    ],
+    "title": "Transicao"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}
+
+#####
+
+*****
+# coletor/rollout.py — interface pública (corpos omitidos)
+
+class ErroAmbiente(Exception):
+    """O serviço respondeu com erro HTTP ou não respondeu (timeout, conexão).
+
+    ``status`` é o código HTTP recebido, ou ``None`` se não houve resposta.
+    """
+    status: int | None
+
+class ErroContrato(Exception):
+    """O serviço respondeu com sucesso, mas o corpo não segue o contrato."""
+
+@dataclass(frozen=True)
+class Transicao:
+    observacao: int
+    recompensa: float
+    terminated: bool
+    truncated: bool
+
+@dataclass(frozen=True)
+class Rollout:
+    observacoes: np.ndarray   # int64
+    acoes: np.ndarray         # int64
+    recompensas: np.ndarray   # float64
+    values: np.ndarray        # float64
+    next_values: np.ndarray   # float64
+    terminated: np.ndarray    # bool
+    truncated: np.ndarray     # bool
+    advantages: np.ndarray    # float64
+    returns: np.ndarray       # float64
+
+class ClienteAmbiente:
+    """Cliente do serviço do ambiente. Recebe o ``httpx.Client`` já configurado (base_url, timeout)."""
+    def __init__(self, http: httpx.Client, comprimento: int, max_passos: int) -> None: ...
+    def criar_episodio(self) -> tuple[str, int]:
+        """Cria um episódio e devolve ``(id, observacao_inicial)``."""
+    def passo(self, episodio_id: str, acao: int) -> Transicao: ...
+    def encerrar(self, episodio_id: str) -> None: ...
+
+def coletar_rollout(
+    cliente: ClienteAmbiente,
+    politica: Callable[[int], int],
+    valor: Callable[[int], float],
+    n_passos: int,
+    gamma: float,
+    gae_lambda: float,
+) -> Rollout:
+    """Coleta ``n_passos`` transições, reiniciando o episódio quando ele acaba, e calcula o GAE.
+
+    - Quando um episódio acaba (``terminated`` ou ``truncated``), o coletor o remove do
+      serviço e cria outro, exceto no último passo do rollout.
+    - ``next_values[t] = valor(observacao devolvida pelo passo t)``, inclusive quando o
+      episódio acabou: é a observação final, não a inicial do episódio seguinte.
+    - O último passo é marcado como ``truncated`` se não terminou, porque o rollout o
+      interrompe de fora.
+    - Ao final, o episódio em aberto é removido do serviço.
+
+    Raises:
+        ValueError: se ``n_passos`` não for inteiro >= 1, ou pelas regras de ``compute_gae``.
+        ErroAmbiente: se o serviço responder erro HTTP ou não responder.
+        ErroContrato: se uma resposta de sucesso violar o contrato.
+    """
+
+# rl/gae.py (já testado em separado)
+def compute_gae(rewards, values, next_values, terminated, truncated, gamma, gae_lambda) -> tuple[np.ndarray, np.ndarray]:
+    """delta_t = rewards[t] + gamma * next_values[t] * (1 - terminated[t]) - values[t]
+    advantages[t] = delta_t + gamma * gae_lambda * (1 - fim_t) * advantages[t+1], fim_t = terminated[t] or truncated[t]
+    advantages[T-1] = delta_{T-1};  returns = advantages + values"""
+
+*****

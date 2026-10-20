@@ -1,0 +1,1 @@
+FAILED execucoes/p2v3a/test_p2v3a.py::test_terminated_next_values_usa_obs_final
